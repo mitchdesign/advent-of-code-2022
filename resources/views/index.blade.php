@@ -3,12 +3,16 @@
 
 <h1>Advent of Code 2022</h1>
 
+<table>
 @foreach ($puzzles as $puzzle)
-    <p>
-        <a href="{{ $puzzle }}/1">Day {{ $puzzle }} puzzle 1</a>
-        <a href="{{ $puzzle }}/2">Day {{ $puzzle }} puzzle 2</a>
-    </p>
+    <tr>
+        <td>Day {{ $puzzle['day'] }}</td>
+        <td>{{ $puzzle['title'] }}</td>
+        <td><a href="{{ $puzzle['day'] }}/1">Puzzle 1</a></td>
+        <td><a href="{{ $puzzle['day'] }}/2">Puzzle 2</a></td>
+    </tr>
 @endforeach
+</table>
 
 </body>
 </html>

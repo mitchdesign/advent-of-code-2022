@@ -6,6 +6,8 @@ use Illuminate\Support\Str;
 
 class Day3 extends Day
 {
+    public static string $title = 'Rucksack Reorganization';
+
     public function result1()
     {
         return collect(explode("\n", $this->input))

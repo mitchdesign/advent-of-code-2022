@@ -4,6 +4,8 @@ namespace App;
 
 class Day2 extends Day
 {
+    public static string $title = 'Rock Paper Scissors';
+
     private array $scores = [
         'AX' => 3 + 1,  // rock-rock = draw
         'AY' => 6 + 2,  // rock-paper = win

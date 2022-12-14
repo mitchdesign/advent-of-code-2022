@@ -16,7 +16,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     $puzzles = collect(range(1,25))
         ->filter(fn ($i) => class_exists("\App\Day{$i}"))
-        ->values();
+        ->map(fn ($i) => [
+            'day' => $i,
+            'title' => ("\App\Day{$i}")::$title
+        ]);
 
     return view('index')
         ->with('puzzles', $puzzles);

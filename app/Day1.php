@@ -4,6 +4,8 @@ namespace App;
 
 class Day1 extends Day
 {
+    public static string $title = 'Calorie Counting';
+
     public function result1()
     {
         return collect(explode("\n\n", $this->input))

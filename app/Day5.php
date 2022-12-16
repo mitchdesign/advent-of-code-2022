@@ -49,7 +49,7 @@ class Day5 extends Day
         collect(str($movesInput)->explode("\n"))
             ->each(function ($line) use ($moves) {
                 $move = [];
-                if (preg_match('/move (?<num>\d+) from (?<from>\d) to (?<to>\d)/', $line,$move)) {
+                if (preg_match('/move (?<num>\d+) from (?<from>\d) to (?<to>\d)/', $line, $move)) {
                     $moves->add($move);
                 }
             });

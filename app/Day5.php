@@ -19,12 +19,8 @@ class Day5 extends Day
 
         // prepare stacks into collections keyed by 1..9
         // example input:
-        // [F] [Q]         [Q]
-        // [B]     [Q] [V] [D]     [S]
+        // [B] [Q] [V]     [S]
         // [S] [P] [T] [R] [M]     [D]
-        // [J] [V] [W] [M] [F]     [J]     [J]
-        // [Z] [G] [S] [W] [N] [D] [R]     [T]
-        // [V] [M] [B] [G] [S] [C] [T] [V] [S]
         // [D] [S] [L] [J] [L] [G] [G] [F] [R]
         // [G] [Z] [C] [H] [C] [R] [H] [P] [D]
         //  1   2   3   4   5   6   7   8   9

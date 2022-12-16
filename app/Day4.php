@@ -20,7 +20,7 @@ class Day4 extends Day
             })->count();
     }
 
-    public function result2()
+    public function result2(): int
     {
         return collect(explode("\n", $this->input))
             ->filter(function ($combo) {

@@ -15,7 +15,7 @@ class Day
         $file = "input{$this->day}.txt";
 
         if (Storage::exists($file)) {
-            $this->input = trim(Storage::get($file));
+            $this->input = Storage::get($file);
         }
     }
 

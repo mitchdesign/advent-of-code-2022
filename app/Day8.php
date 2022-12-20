@@ -33,9 +33,7 @@ class Day8 extends Day
     public function result1(): int
     {
         $this->forest->each(fn ($row, $y) => $this->findVisible($row, '', ".{$y}"));
-        $this->forest->each(fn ($row, $y) => $this->findVisible($row->reverse(), '', ".{$y}"));
         $this->rotatedForest->each(fn ($col, $x) => $this->findVisible($col, "{$x}.", ''));
-        $this->rotatedForest->each(fn ($col, $x) => $this->findVisible($col->reverse(), "{$x}.", ''));
 
         return $this->visibleTrees->unique()->count();
     }
@@ -49,6 +47,14 @@ class Day8 extends Day
     {
         $max = -1;
         $row->each(function ($tree, $i) use (&$max, $prefix, $postfix) {
+            if ($tree > $max) {
+                $this->visibleTrees->add("{$prefix}{$i}{$postfix}");
+                $max = $tree;
+            }
+        });
+
+        $max = -1;
+        $row->reverse()->each(function ($tree, $i) use (&$max, $prefix, $postfix) {
             if ($tree > $max) {
                 $this->visibleTrees->add("{$prefix}{$i}{$postfix}");
                 $max = $tree;

@@ -38,10 +38,28 @@ class Day8 extends Day
 
     public function result1(): int
     {
-        $this->forest->each(fn ($row, $y) => $this->findVisibleFromOutside($row, '', ".{$y}"));
-        $this->rotatedForest->each(fn ($col, $x) => $this->findVisibleFromOutside($col, "{$x}.", ''));
+        $visibleTrees = 0;
 
-        return $this->visibleTrees->unique()->count();
+        foreach (array_keys($this->forestArray) as $row) {
+            foreach (array_keys($this->forestArray[0]) as $col) {
+                $visibleTrees += $this->isTreeVisible($row, $col) ? 1 : 0;
+            }
+        }
+
+        return $visibleTrees;
+    }
+
+    private function isTreeVisible(int $row, int $col): bool
+    {
+        $tree = $this->forestArray[$row][$col];
+
+        return collect([
+            array_slice($this->forestArray[$row], 0, $col),
+            array_slice($this->forestArray[$row], $col + 1),
+            array_slice($this->rotatedForestArray[$col], 0, $row),
+            array_slice($this->rotatedForestArray[$col], $row + 1),
+        ])->takeUntil(fn ($side) => count($side) === 0 || max($side) < $tree)
+            ->count() < 4;
     }
 
     public function result2(): int
@@ -55,25 +73,6 @@ class Day8 extends Day
         }
 
         return $maxScenicScore;
-    }
-
-    private function findVisibleFromOutside(Collection $row, string $prefix, string $postfix): void
-    {
-        $max = -1;
-        $row->each(function ($tree, $i) use (&$max, $prefix, $postfix) {
-            if ($tree > $max) {
-                $this->visibleTrees->add("{$prefix}{$i}{$postfix}");
-                $max = $tree;
-            }
-        });
-
-        $max = -1;
-        $row->reverse()->each(function ($tree, $i) use (&$max, $prefix, $postfix) {
-            if ($tree > $max) {
-                $this->visibleTrees->add("{$prefix}{$i}{$postfix}");
-                $max = $tree;
-            }
-        });
     }
 
     private function getScenicScore(int $row, int $col): int

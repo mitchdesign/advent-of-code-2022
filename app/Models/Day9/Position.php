@@ -7,6 +7,13 @@ class Position implements \Stringable
     public int $x = 0;
     public int $y = 0;
 
+    private ?Position $previous = null;
+
+    public function setFollows(Position $previous)
+    {
+        $this->previous = $previous;
+    }
+
     public function move(string $direction): void
     {
         switch ($direction) {
@@ -36,21 +43,29 @@ class Position implements \Stringable
         return [$this->x - $position->x, $this->y - $position->y];
     }
 
-    public function follow(self $position): void
+    public function follow(): void
     {
-        [$dx, $dy] = $this->diff($position);
+        if (! $this->previous) {
+            return;
+        }
+
+        [$dx, $dy] = $this->diff($this->previous);
 
         if (abs($dx) >= 2) {
             // move 1 steps in the right direction and compensate for any y deviation
             // meaning "fall in line" behind the head
             $x = ($dx < 0) ? 1 : -1;
-            $y = -1 * $dy;
+            $y = $dy == 0
+                ? 0
+                : ($dy < 0 ? 1 : -1);
             $this->add($x, $y);
         } elseif (abs($dy) >= 2) {
             // move 1 steps in the right direction and compensate for any x deviation
             // meaning "fall in line" behind the head
             $y = ($dy < 0) ? 1 : -1;
-            $x = -1 * $dx;
+            $x = $dx == 0
+                ? 0
+                : ($dx < 0 ? 1 : -1);
             $this->add($x, $y);
         }
     }

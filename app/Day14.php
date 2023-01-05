@@ -24,7 +24,10 @@ class Day14 extends Day
 
 //        $this->input = '498,4 -> 498,6 -> 496,6
 //503,4 -> 502,4 -> 502,9 -> 494,9';
+    }
 
+    public function initCave(bool $addFloor = false): void
+    {
         // prep the input into a collection of rock layers
         $rocks = str($this->input)
             ->trim()
@@ -34,8 +37,25 @@ class Day14 extends Day
         $x = $rocks->flatten(1)->pluck(0)->add($this->entryPoint[0]);
         $y = $rocks->flatten(1)->pluck(1)->add($this->entryPoint[1]);
 
-        $xArray = array_fill_keys(range($x->min(), $x->max()), self::AIR);
-        $this->map = array_fill_keys(range($y->min(), $y->max()), $xArray);
+        $left = $x->min();
+        $right = $x->max();
+        $top = $y->min();
+        $bottom = $y->max();
+
+        // alter the map with a floor and make it wider
+        // big-picture it will look like a pyramid so we make add one height to the left and right
+        if ($addFloor) {
+            $height = $bottom - $top;
+            $left -= $height;
+            $right += $height;
+            $bottom += 2;
+
+            // add the rock layer to the definition
+            $rocks->add(collect([[$left, $bottom], [$right, $bottom]]));
+        }
+
+        $xArray = array_fill_keys(range($left, $right), self::AIR);
+        $this->map = array_fill_keys(range($top, $bottom), $xArray);
 
         foreach ($rocks as $layer) {
             for ($i = 1; $i < $layer->count(); $i++) {
@@ -47,10 +67,26 @@ class Day14 extends Day
             }
         }
 
-        // $this->visualize();  // uncomment to show initial rock formation
+        $this->visualize();
     }
 
     public function result1(): int
+    {
+        $this->initCave();
+        $this->go();
+
+        return $this->sandCount;
+    }
+
+    public function result2(): int
+    {
+        $this->initCave(true);
+        $this->go();
+
+        return $this->sandCount;
+    }
+
+    public function go(): void
     {
         while ([$x, $y] = $this->dropSand()) {
             $this->map[$y][$x] = self::SAND;
@@ -58,13 +94,7 @@ class Day14 extends Day
                 $this->visualize();
             }
         }
-
-        return $this->sandCount;
-    }
-
-    public function result2(): int
-    {
-        return 1;
+        $this->visualize();
     }
 
     public function dropSand(): ?array
@@ -72,7 +102,7 @@ class Day14 extends Day
         $position = $this->entryPoint;
 
         try {
-            while (true) {
+            while ($this->map[$this->entryPoint[1]][$this->entryPoint[0]] === self::AIR) {  // stop the loop when entry has been blocked
                 $center = [$position[0], $position[1] + 1];
                 if ($this->getPosition($center) === self::AIR) {
                     $position = $center;
@@ -99,6 +129,8 @@ class Day14 extends Day
         } catch (\RuntimeException $e) {
             return null;
         }
+
+        return null;
     }
 
     public function getPosition(array $position): int
@@ -115,7 +147,7 @@ class Day14 extends Day
         $map = $this->map;
         $map[0][500] = 'V';
 
-        echo '<pre>' . str_replace(
+        echo '<pre style="font-size: .25rem;">' . str_replace(
             [self::AIR, self::SAND, self::ROCK],
             ['.', 'o', '#'],
     join("\n", array_map(fn ($row) => join('', $row), $map)) . '</pre>'

@@ -23,12 +23,12 @@ class Day17 extends Day
     {
         parent::__construct();
 
-        $this->input = trim($this->input);
         $this->totalRocks = 2022;
 
+        $this->input = trim($this->input);
+
         // override for examples
-        $this->input = '>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>';
-        $this->totalRocks = 10;
+        // $this->input = '>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>';
 
         $this->wind = $this->input;
         $this->windLength = strlen($this->wind);
@@ -36,11 +36,11 @@ class Day17 extends Day
         // shapes of the rocks. uses [h,l]. h is counting up, l is counting right, starting from left bottom [0,0] position.
 
         $this->rocks = [
-            [ [0,0], [0,1], [0,2], [0,3] ],
-            [ [0,1], [1,0], [1,1], [1,2], [2,1] ],
-            [ [0,0], [0,1], [0,2], [1,2], [2,2] ],
-            [ [0,0], [1,0], [2,0], [3,0] ],
-            [ [0,0], [0,1], [1,0], [1,1] ],
+            [ 'units' => [ [0,0], [0,1], [0,2], [0,3] ], 'width' => 1 ],
+            [ 'units' => [ [0,1], [1,0], [1,1], [1,2], [2,1] ], 'width' => 3 ],
+            [ 'units' => [ [0,0], [0,1], [0,2], [1,2], [2,2] ], 'width' => 3 ],
+            [ 'units' => [ [0,0], [1,0], [2,0], [3,0] ], 'width' => 1 ],
+            [ 'units' => [ [0,0], [0,1], [1,0], [1,1] ], 'width' => 2 ],
         ];
         $this->rocksLength = count($this->rocks);
     }
@@ -53,21 +53,31 @@ class Day17 extends Day
 
         while ($currentRock <= $this->totalRocks) {
             $rock = $this->getRock();
+
             $h = $this->caveFloor() + 4;
             $l = 2;
+
+            $this->render($rock, $h, $l);
 
             $canFall = true;
 
             do {
                 $wind = $this->getWind();
+
                 if ($this->canMove($rock, $h, $l, 0, $wind)) {
                     $l += $wind;
                 }
+
+                $this->render($rock, $h, $l);
+
                 if ($this->canMove($rock, $h, $l, -1, 0)) {
                     $h--;
                 } else {
                     $canFall = false;
                 }
+
+                $this->render($rock, $h, $l);
+
             } while ($canFall);
 
             $this->placeRock($rock, $h, $l);
@@ -88,13 +98,13 @@ class Day17 extends Day
     public function canMove($rock, $h, $l, $dh, $dl): bool
     {
         // the rock can fall if all units of the rock, moved down 1, are empty
-        foreach ($rock as $unit) {
+        foreach ($rock['units'] as $unit) {
             [$uh, $ul] = $unit;
 
             $newH = $h + $uh + $dh;
             $newL = $l + $ul + $dl;
 
-            if (! empty($this->cave[$newH][$newL])) {
+            if ($newL < 0 || $newL >= $this->caveWidth  || ! empty($this->cave[$newH][$newL])) {
                 return false;
             }
         }
@@ -105,7 +115,7 @@ class Day17 extends Day
     public function placeRock($rock, $h, $l): bool
     {
         // the rock can fall if all units of the rock, moved down 1, are empty
-        foreach ($rock as $unit) {
+        foreach ($rock['units'] as $unit) {
             [$uh, $ul] = $unit;
 
             $newH = $h + $uh;
@@ -123,7 +133,7 @@ class Day17 extends Day
 
         $this->windCounter++;
         if ($this->windCounter == $this->windLength) {
-            $this->windCounter == 0;
+            $this->windCounter = 0;
         }
 
         return $wind == '<' ? -1 : 1;
@@ -155,14 +165,28 @@ class Day17 extends Day
         return array_key_last($this->cave);
     }
 
-    public function render(): void
+    public function render(array $rock = [], int $h = 0, int $l = 0): void
     {
+        return;
+
         echo "<pre>";
 
-        for ($h = $this->caveFloor(); $h > 0; $h++) {
+        $renderedRock = [];
+
+        if ($rock) {
+            foreach ($rock['units'] as [$uh, $ul]) {
+                $renderedRock[$h + $uh][$l + $ul] = '@';
+            }
+        }
+
+        for ($h = $this->caveFloor() + 8; $h > 0; $h--) {
             echo '|';
             for ($l = 0; $l < $this->caveWidth; $l++) {
-                echo empty($this->cave[$h][$l]) ? '.' : '#';
+                if (! empty($renderedRock[$h][$l])) {
+                    echo '@';
+                } else {
+                    echo empty($this->cave[$h][$l]) ? '.' : '#';
+                }
             }
             echo '|' . "\n";
         }

@@ -15,15 +15,14 @@ class Day17 extends Day
     protected int $rocksLength = 0;
 
     protected array $cave = [];
-    protected int $caveWidth = 0;
+    protected int $caveWidth = 7;
 
-    protected int $totalRocks = 0;
+    protected int $cleanedLines = 0;
+    protected array $states = [];
 
     public function __construct()
     {
         parent::__construct();
-
-        $this->totalRocks = 2022;
 
         $this->input = trim($this->input);
 
@@ -43,21 +42,30 @@ class Day17 extends Day
             [ 'units' => [ [0,0], [0,1], [1,0], [1,1] ], 'width' => 2 ],
         ];
         $this->rocksLength = count($this->rocks);
+
+        $this->initCave();
     }
 
-    public function puzzle1()
+    public function puzzle1(): int
     {
-        $this->initCave(7);
+        return $this->go(2022);
+    }
 
+    public function puzzle2(): int
+    {
+        return $this->go(1_000_000_000_000);
+    }
+
+    public function go(int $totalRocks): int
+    {
         $currentRock = 1;
 
-        while ($currentRock <= $this->totalRocks) {
+        while ($currentRock <= $totalRocks) {
             $rock = $this->getRock();
 
+            // start position of rock
             $h = $this->caveFloor() + 4;
             $l = 2;
-
-            $this->render($rock, $h, $l);
 
             $canFall = true;
 
@@ -68,31 +76,41 @@ class Day17 extends Day
                     $l += $wind;
                 }
 
-                $this->render($rock, $h, $l);
-
                 if ($this->canMove($rock, $h, $l, -1, 0)) {
                     $h--;
                 } else {
                     $canFall = false;
                 }
-
-                $this->render($rock, $h, $l);
-
             } while ($canFall);
 
-            $this->placeRock($rock, $h, $l);
+            $fullLine = $this->placeRock($rock, $h, $l);
+
+            // if there is a full line, clean up the cave and keep count of what we removed
+            if ($fullLine) {
+                $this->cleanedLines += $fullLine;
+                $this->cave = array_slice($this->cave, $fullLine);
+
+                $hash = md5("{$this->rockCounter}-{$this->windCounter}-" . serialize($this->cave));
+                $currentLine = $this->caveFloor() + $this->cleanedLines;
+
+                if (isset($this->states[$hash])) {
+                    [$previousLine, $previousRock] = $this->states[$hash];
+
+                    $lineDelta = $currentLine - $previousLine;
+                    $rockDelta = $currentRock - $previousRock;
+
+                    $repeats = floor(($totalRocks - $currentRock) / $rockDelta);
+                    $this->cleanedLines += $repeats * $lineDelta;
+                    $currentRock += $repeats * $rockDelta;
+                };
+
+                $this->states[$hash] = [$currentLine, $currentRock];
+            }
 
             $currentRock++;
-
-            $this->render();
         }
 
-        return $this->caveFloor();
-    }
-
-    public function puzzle2()
-    {
-        return 1;
+        return $this->caveFloor() + $this->cleanedLines;
     }
 
     public function canMove($rock, $h, $l, $dh, $dl): bool
@@ -112,9 +130,10 @@ class Day17 extends Day
         return true;
     }
 
-    public function placeRock($rock, $h, $l): bool
+    public function placeRock($rock, $h, $l): int
     {
-        // the rock can fall if all units of the rock, moved down 1, are empty
+        $fullLine = 0;
+
         foreach ($rock['units'] as $unit) {
             [$uh, $ul] = $unit;
 
@@ -122,9 +141,13 @@ class Day17 extends Day
             $newL = $l + $ul;
 
             $this->cave[$newH][$newL] = true;
+
+            if ($newH > 2 && count($this->cave[$newH] + $this->cave[$newH - 1]) == $this->caveWidth) {
+                $fullLine = $newH - 2;
+            }
         }
 
-        return true;
+        return $fullLine;
     }
 
     public function getWind(): int
@@ -151,10 +174,8 @@ class Day17 extends Day
         return $rock;
     }
 
-    public function initCave(int $width): void
+    public function initCave(): void
     {
-        $this->caveWidth = $width;
-
         for ($x = 0; $x < $this->caveWidth; $x++) {
             $this->cave[0][$x] = true;
         }
@@ -167,8 +188,6 @@ class Day17 extends Day
 
     public function render(array $rock = [], int $h = 0, int $l = 0): void
     {
-        return;
-
         echo "<pre>";
 
         $renderedRock = [];

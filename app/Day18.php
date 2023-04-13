@@ -2,77 +2,85 @@
 
 namespace App;
 
-use Illuminate\Support\Collection;
-
 class Day18 extends Day
 {
     public static string $title = 'Boiling Boulders';
 
-    protected Collection $droplets;
-    protected array $dropletsCheck = [];
-    protected array $axisExtremes = [];
+    const ROCK = 1;
+    const FREE_AIR = 2;
+    const CONTAINED_AIR = 3;
+
+    protected array $droplets;
+    protected array $extremes = [];
+    protected array $toScan = [];
+    protected array $scanned = [];
 
     public function __construct()
     {
         parent::__construct();
 
-//        $this->input = '2,2,2
-//1,2,2
-//3,2,2
-//2,1,2
-//2,3,2
-//2,2,1
-//2,2,3
-//2,2,4
-//2,2,6
-//1,2,5
-//3,2,5
-//2,1,5
-//2,3,5';
+        $this->input = '2,2,2
+1,2,2
+3,2,2
+2,1,2
+2,3,2
+2,2,1
+2,2,3
+2,2,4
+2,2,6
+1,2,5
+3,2,5
+2,1,5
+2,3,5';
 
         $this->input = trim($this->input);
-
-        $this->droplets = $this->scanDroplets();
-        $this->axisExtremes = $this->getExtremes();
-
-        $this->dropletsCheck = $this->droplets->map(fn ($droplet) => [
-            "x{$droplet['x']}y{$droplet['y']}z{$droplet['z']}",
-            "y{$droplet['y']}x{$droplet['x']}z{$droplet['z']}",
-            "z{$droplet['z']}x{$droplet['x']}y{$droplet['y']}",
-        ])->flatten()->toArray();
+        $this->scanInput();
     }
 
     public function puzzle1(): int
     {
-        return $this->countFreeFaces();
+        // puzzle 1 : check for the bounderies between rock and anything else
+        return $this->countBoundaries(fn ($a, $b) => ($a === self::ROCK) !== ($b === self::ROCK));
     }
 
     public function puzzle2(): int
     {
-        return 1;
+        // puzzle 2 : first find and mark all the free-air blocks.
+        // then check for the boundaries between free air and anything else
+        $this->traceFreeAir();
+
+        return $this->countBoundaries(fn ($a, $b) => ($a === self::FREE_AIR) !== ($b === self::FREE_AIR));
     }
 
-    protected function countFreeFaces(): int
+    protected function countBoundaries(callable $comparator): int
     {
         $count = 0;
 
         foreach (['x', 'y', 'z'] as $axis) {
             [$firstAxis, $secondAxis] = array_values(array_diff(['x', 'y', 'z'], [$axis]));
 
-            $scanState = [];
-            for ($firstCount = $this->axisExtremes[$firstAxis]['min']; $firstCount <= $this->axisExtremes[$firstAxis]['max'] + 1; $firstCount++) {
-                for ($secondCount = $this->axisExtremes[$secondAxis]['min']; $secondCount <= $this->axisExtremes[$secondAxis]['max'] + 1; $secondCount++) {
-                    $scanState[$firstCount][$secondCount] = false;
-                }
-            }
+            foreach (range($this->extremes[$axis]['min'],$this->extremes[$axis]['max'] + 1) as $axisCount) {
+                ${$axis} = $axisCount;
 
-            for ($axisCount = $this->axisExtremes[$axis]['min']; $axisCount <= $this->axisExtremes[$axis]['max'] + 1; $axisCount++) {
-                for ($firstCount = $this->axisExtremes[$firstAxis]['min']; $firstCount <= $this->axisExtremes[$firstAxis]['max'] + 1; $firstCount++) {
-                    for ($secondCount = $this->axisExtremes[$secondAxis]['min']; $secondCount <= $this->axisExtremes[$secondAxis]['max'] + 1; $secondCount++) {
-                        $isSet = in_array("{$axis}{$axisCount}{$firstAxis}{$firstCount}{$secondAxis}{$secondCount}", $this->dropletsCheck);
-                        if ($isSet != $scanState[$firstCount][$secondCount]) {
+                foreach (range($this->extremes[$firstAxis]['min'], $this->extremes[$firstAxis]['max']) as $firstCount) {
+                    ${$firstAxis} = $firstCount;
+
+                    foreach (range($this->extremes[$secondAxis]['min'], $this->extremes[$secondAxis]['max']) as $secondCount) {
+                        ${$secondAxis} = $secondCount;
+
+                        $current = $axisCount === $this->extremes[$axis]['max'] + 1
+                            ? self::FREE_AIR
+                            : $this->droplets[$x][$y][$z];
+
+                        ${$axis}--;
+                        $previous = $axisCount === $this->extremes[$axis]['min']
+                            ? self::FREE_AIR
+                            : $this->droplets[$x][$y][$z];
+
+                        ${$axis}++;
+
+                        if ($comparator($previous, $current)) {
                             $count++;
-                            $scanState[$firstCount][$secondCount] = $isSet;
                         }
                     }
                 }
@@ -82,31 +90,44 @@ class Day18 extends Day
         return $count;
     }
 
-    protected function scanDroplets(): Collection
+    protected function scanInput(): void
     {
-        return collect(explode("\n", $this->input))->map(function ($line) {
-            [$x, $y, $z] = explode(',', $line);
-            return ['x' => $x, 'y' => $y, 'z' => $z];
-        });
-    }
+        $extremesX = $extremesY = $extremesZ = [];
 
-    protected function getExtremes(): array
-    {
-        $extremes = [
+        foreach (explode("\n", $this->input) as $line) {
+            [$x, $y, $z] = explode(',', trim($line));
+            $this->droplets[(int) $x][(int) $y][(int) $z] = self::ROCK;
+            $extremesX[] = (int) $x;
+            $extremesY[] = (int) $y;
+            $extremesZ[] = (int) $z;
+        }
+
+        $this->extremes = [
             'x' => [
-                'min' => $this->droplets->pluck('x')->min(),
-                'max' => $this->droplets->pluck('x')->max(),
+                'min' => min($extremesX),
+                'max' => max($extremesX),
             ],
             'y' => [
-                'min' => $this->droplets->pluck('y')->min(),
-                'max' => $this->droplets->pluck('y')->max(),
+                'min' => min($extremesY),
+                'max' => max($extremesY),
             ],
             'z' => [
-                'min' => $this->droplets->pluck('z')->min(),
-                'max' => $this->droplets->pluck('z')->max(),
+                'min' => min($extremesZ),
+                'max' => max($extremesZ),
             ],
         ];
 
-        return $extremes;
+        foreach (range($this->extremes['x']['min'], $this->extremes['x']['max']) as $x) {
+            foreach (range($this->extremes['y']['min'], $this->extremes['y']['max']) as $y) {
+                foreach (range($this->extremes['z']['min'], $this->extremes['z']['max']) as $z) {
+                    $this->droplets[$x][$y][$z] ??= self::CONTAINED_AIR;
+                }
+            }
+        }
+    }
+
+    protected function traceFreeAir(): void
+    {
+
     }
 }

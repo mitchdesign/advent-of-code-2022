@@ -12,6 +12,7 @@ class Day18 extends Day
 
     protected array $droplets;
     protected array $extremes = [];
+
     protected array $toScan = [];
     protected array $scanned = [];
 
@@ -19,19 +20,19 @@ class Day18 extends Day
     {
         parent::__construct();
 
-        $this->input = '2,2,2
-1,2,2
-3,2,2
-2,1,2
-2,3,2
-2,2,1
-2,2,3
-2,2,4
-2,2,6
-1,2,5
-3,2,5
-2,1,5
-2,3,5';
+//        $this->input = '2,2,2
+//1,2,2
+//3,2,2
+//2,1,2
+//2,3,2
+//2,2,1
+//2,2,3
+//2,2,4
+//2,2,6
+//1,2,5
+//3,2,5
+//2,1,5
+//2,3,5';
 
         $this->input = trim($this->input);
         $this->scanInput();
@@ -59,19 +60,19 @@ class Day18 extends Day
         foreach (['x', 'y', 'z'] as $axis) {
             [$firstAxis, $secondAxis] = array_values(array_diff(['x', 'y', 'z'], [$axis]));
 
-            foreach (range($this->extremes[$firstAxis]['min'], $this->extremes[$firstAxis]['max']) as $firstCount) {
+            foreach (range(...$this->extremes[$firstAxis]) as $firstCount) {
                 ${$firstAxis} = $firstCount;
 
-                foreach (range($this->extremes[$secondAxis]['min'], $this->extremes[$secondAxis]['max']) as $secondCount) {
+                foreach (range(...$this->extremes[$secondAxis]) as $secondCount) {
                     ${$secondAxis} = $secondCount;
 
                     // start from min, with previous = FREE_AIR
-                    ${$axis} = $this->extremes[$axis]['min'];
+                    ${$axis} = $this->extremes[$axis][0];
                     $previous = self::FREE_AIR;
 
-                    while (${$axis} <= $this->extremes[$axis]['max'] + 1)
+                    while (${$axis} <= $this->extremes[$axis][1] + 1)
                     {
-                        $current = ${$axis} === $this->extremes[$axis]['max'] + 1
+                        $current = ${$axis} === $this->extremes[$axis][1] + 1
                             ? self::FREE_AIR
                             : $this->droplets[$x][$y][$z];
 
@@ -95,30 +96,27 @@ class Day18 extends Day
 
         foreach (explode("\n", $this->input) as $line) {
             [$x, $y, $z] = explode(',', trim($line));
-            $this->droplets[(int) $x][(int) $y][(int) $z] = self::ROCK;
-            $extremesX[] = (int) $x;
-            $extremesY[] = (int) $y;
-            $extremesZ[] = (int) $z;
+
+            $x = (int) $x;
+            $y = (int) $y;
+            $z = (int) $z;
+
+            $this->droplets[$x][$y][$z] = self::ROCK;
+
+            $extremesX[] = $x;
+            $extremesY[] = $y;
+            $extremesZ[] = $z;
         }
 
         $this->extremes = [
-            'x' => [
-                'min' => min($extremesX),
-                'max' => max($extremesX),
-            ],
-            'y' => [
-                'min' => min($extremesY),
-                'max' => max($extremesY),
-            ],
-            'z' => [
-                'min' => min($extremesZ),
-                'max' => max($extremesZ),
-            ],
+            'x' => [min($extremesX), max($extremesX)],
+            'y' => [min($extremesY), max($extremesY)],
+            'z' => [min($extremesZ), max($extremesZ)],
         ];
 
-        foreach (range($this->extremes['x']['min'], $this->extremes['x']['max']) as $x) {
-            foreach (range($this->extremes['y']['min'], $this->extremes['y']['max']) as $y) {
-                foreach (range($this->extremes['z']['min'], $this->extremes['z']['max']) as $z) {
+        foreach (range(...$this->extremes['x']) as $x) {
+            foreach (range(...$this->extremes['y']) as $y) {
+                foreach (range(...$this->extremes['z']) as $z) {
                     $this->droplets[$x][$y][$z] ??= self::CONTAINED_AIR;
                 }
             }
@@ -127,6 +125,86 @@ class Day18 extends Day
 
     protected function traceFreeAir(): void
     {
+        $this->setTraceStart();
 
+        while ([$x, $y, $z] = $this->getNextToScan()) {
+
+            // if this is a rock, we are done finding adjacent free air.
+            if ($this->droplets[$x][$y][$z] === self::ROCK) {
+                continue;
+            }
+
+            // no rock. this node is added to free air
+            $this->droplets[$x][$y][$z] = self::FREE_AIR;
+
+            // and we can scan the adjacent nodes
+            foreach ($this->getNeighbors($x, $y, $z) as $neighbor) {
+                $this->addToScanIfNotAdded($neighbor);
+            }
+        }
+    }
+
+    protected function getNextToScan(): ?array
+    {
+        $next = array_shift($this->toScan);
+
+        if (is_null($next)) {
+            return null;
+        }
+
+        $this->scanned[] = $next;
+
+        [$x, $y, $z] = explode(',', $next);
+
+        return [(int) $x, (int) $y, (int) $z];
+    }
+
+    protected function getNeighbors(int $x, int $y, int $z): array
+    {
+        $neighbors = [];
+
+        if ($x - 1 >= $this->extremes['x'][0]) { $neighbors[] = [$x - 1, $y, $z]; }
+        if ($x + 1 <= $this->extremes['x'][1]) { $neighbors[] = [$x + 1, $y, $z]; }
+
+        if ($y - 1 >= $this->extremes['y'][0]) { $neighbors[] = [$x, $y - 1, $z]; }
+        if ($y + 1 <= $this->extremes['y'][1]) { $neighbors[] = [$x, $y + 1, $z]; }
+
+        if ($z - 1 >= $this->extremes['z'][0]) { $neighbors[] = [$x, $y, $z - 1]; }
+        if ($z + 1 <= $this->extremes['z'][1]) { $neighbors[] = [$x, $y, $z + 1]; }
+
+        return $neighbors;
+    }
+
+    protected function addToScanIfNotAdded(array $node): void
+    {
+        $string = join(',', $node);
+
+        if (! in_array($string, $this->toScan) && ! in_array($string, $this->scanned)) {
+            $this->toScan[] = $string;
+        }
+    }
+
+    protected function setTraceStart(): void
+    {
+        foreach (range(...$this->extremes['x']) as $x) {
+            foreach (range(...$this->extremes['y']) as $y) {
+                $this->addToScanIfNotAdded([$x, $y, $this->extremes['z'][0]]);
+                $this->addToScanIfNotAdded([$x, $y, $this->extremes['z'][1]]);
+            }
+        }
+
+        foreach (range(...$this->extremes['x']) as $x) {
+            foreach (range(...$this->extremes['z']) as $z) {
+                $this->addToScanIfNotAdded([$x, $this->extremes['y'][0], $z]);
+                $this->addToScanIfNotAdded([$x, $this->extremes['y'][1], $z]);
+            }
+        }
+
+        foreach (range(...$this->extremes['y']) as $y) {
+            foreach (range(...$this->extremes['z']) as $z) {
+                $this->addToScanIfNotAdded([$this->extremes['x'][0], $y, $z]);
+                $this->addToScanIfNotAdded([$this->extremes['x'][1], $y, $z]);
+            }
+        }
     }
 }

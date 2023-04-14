@@ -41,7 +41,7 @@ class Day18 extends Day
     public function puzzle1(): int
     {
         // puzzle 1 : check for the bounderies between rock and anything else
-        return $this->countBoundaries(fn ($a, $b) => ($a === self::ROCK) !== ($b === self::ROCK));
+        return $this->countBoundaries(self::ROCK);
     }
 
     public function puzzle2(): int
@@ -50,10 +50,10 @@ class Day18 extends Day
         // then check for the boundaries between free air and anything else
         $this->traceFreeAir();
 
-        return $this->countBoundaries(fn ($a, $b) => ($a === self::FREE_AIR) !== ($b === self::FREE_AIR));
+        return $this->countBoundaries(self::FREE_AIR);
     }
 
-    protected function countBoundaries(callable $comparator): int
+    protected function countBoundaries(int $boundaryType): int
     {
         $count = 0;
 
@@ -76,7 +76,7 @@ class Day18 extends Day
                             ? self::FREE_AIR
                             : $this->droplets[$x][$y][$z];
 
-                        if ($comparator($previous, $current)) {
+                        if (($previous === $boundaryType) !== ($current === $boundaryType)) {
                             $count++;
                         }
 
@@ -92,34 +92,24 @@ class Day18 extends Day
 
     protected function scanInput(): void
     {
-        $extremesX = $extremesY = $extremesZ = [];
-
-        foreach (explode("\n", $this->input) as $line) {
-            [$x, $y, $z] = explode(',', trim($line));
-
-            $x = (int) $x;
-            $y = (int) $y;
-            $z = (int) $z;
-
-            $this->droplets[$x][$y][$z] = self::ROCK;
-
-            $extremesX[] = $x;
-            $extremesY[] = $y;
-            $extremesZ[] = $z;
-        }
+        $rocks = str($this->input)
+            ->trim()
+            ->split('/\n/')
+            ->map(fn ($line) => str($line)->explode(',')
+                ->map(fn ($val) => (int) $val)->toArray()
+            )->toArray();
 
         $this->extremes = [
-            'x' => [min($extremesX), max($extremesX)],
-            'y' => [min($extremesY), max($extremesY)],
-            'z' => [min($extremesZ), max($extremesZ)],
+            'x' => [min($v = array_column($rocks, 0)), max($v)],
+            'y' => [min($v = array_column($rocks, 1)), max($v)],
+            'z' => [min($v = array_column($rocks, 2)), max($v)],
         ];
 
-        foreach (range(...$this->extremes['x']) as $x) {
-            foreach (range(...$this->extremes['y']) as $y) {
-                foreach (range(...$this->extremes['z']) as $z) {
-                    $this->droplets[$x][$y][$z] ??= self::CONTAINED_AIR;
-                }
-            }
+        $this->droplets = array_fill_keys(range(...$this->extremes['x']), array_fill_keys(range(...$this->extremes['y']), array_fill_keys(range(...$this->extremes['z']), self::CONTAINED_AIR)));
+
+        foreach ($rocks as $rock) {
+            [$x, $y, $z] = $rock;
+            $this->droplets[$x][$y][$z] = self::ROCK;
         }
     }
 
@@ -161,18 +151,14 @@ class Day18 extends Day
 
     protected function getNeighbors(int $x, int $y, int $z): array
     {
-        $neighbors = [];
-
-        if ($x - 1 >= $this->extremes['x'][0]) { $neighbors[] = [$x - 1, $y, $z]; }
-        if ($x + 1 <= $this->extremes['x'][1]) { $neighbors[] = [$x + 1, $y, $z]; }
-
-        if ($y - 1 >= $this->extremes['y'][0]) { $neighbors[] = [$x, $y - 1, $z]; }
-        if ($y + 1 <= $this->extremes['y'][1]) { $neighbors[] = [$x, $y + 1, $z]; }
-
-        if ($z - 1 >= $this->extremes['z'][0]) { $neighbors[] = [$x, $y, $z - 1]; }
-        if ($z + 1 <= $this->extremes['z'][1]) { $neighbors[] = [$x, $y, $z + 1]; }
-
-        return $neighbors;
+        return array_filter([
+            [$x - 1, $y, $z],
+            [$x + 1, $y, $z],
+            [$x, $y - 1, $z],
+            [$x, $y + 1, $z],
+            [$x, $y, $z - 1],
+            [$x, $y, $z + 1],
+        ], fn ($node) => isset($this->droplets[$node[0]][$node[1]][$node[2]]));
     }
 
     protected function addToScanIfNotAdded(array $node): void

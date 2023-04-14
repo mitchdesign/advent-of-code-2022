@@ -59,29 +59,28 @@ class Day18 extends Day
         foreach (['x', 'y', 'z'] as $axis) {
             [$firstAxis, $secondAxis] = array_values(array_diff(['x', 'y', 'z'], [$axis]));
 
-            foreach (range($this->extremes[$axis]['min'],$this->extremes[$axis]['max'] + 1) as $axisCount) {
-                ${$axis} = $axisCount;
+            foreach (range($this->extremes[$firstAxis]['min'], $this->extremes[$firstAxis]['max']) as $firstCount) {
+                ${$firstAxis} = $firstCount;
 
-                foreach (range($this->extremes[$firstAxis]['min'], $this->extremes[$firstAxis]['max']) as $firstCount) {
-                    ${$firstAxis} = $firstCount;
+                foreach (range($this->extremes[$secondAxis]['min'], $this->extremes[$secondAxis]['max']) as $secondCount) {
+                    ${$secondAxis} = $secondCount;
 
-                    foreach (range($this->extremes[$secondAxis]['min'], $this->extremes[$secondAxis]['max']) as $secondCount) {
-                        ${$secondAxis} = $secondCount;
+                    // start from min, with previous = FREE_AIR
+                    ${$axis} = $this->extremes[$axis]['min'];
+                    $previous = self::FREE_AIR;
 
-                        $current = $axisCount === $this->extremes[$axis]['max'] + 1
+                    while (${$axis} <= $this->extremes[$axis]['max'] + 1)
+                    {
+                        $current = ${$axis} === $this->extremes[$axis]['max'] + 1
                             ? self::FREE_AIR
                             : $this->droplets[$x][$y][$z];
-
-                        ${$axis}--;
-                        $previous = $axisCount === $this->extremes[$axis]['min']
-                            ? self::FREE_AIR
-                            : $this->droplets[$x][$y][$z];
-
-                        ${$axis}++;
 
                         if ($comparator($previous, $current)) {
                             $count++;
                         }
+
+                        $previous = $current;
+                        ${$axis}++;
                     }
                 }
             }

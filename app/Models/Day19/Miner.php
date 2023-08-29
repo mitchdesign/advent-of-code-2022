@@ -24,8 +24,6 @@ class Miner
 
     public function mine(): int
     {
-        dump('Blueprint', $this->blueprint);
-
         $this->addToVisit([
             'time' => $this->time,
             'ore' => 0,
@@ -41,8 +39,6 @@ class Miner
         while ($next = array_pop($this->toVisit)) {
             $this->visit($next);
         }
-
-        dump('Blueprint ' . $this->blueprint['id'] . ' : ' . $this->maxGeodes);
 
         return $this->maxGeodes;
     }

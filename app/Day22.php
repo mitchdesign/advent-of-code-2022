@@ -2,9 +2,6 @@
 
 namespace App;
 
-use App\Models\Day22\Map2D;
-use App\Models\Day22\Position2D;
-
 class Day22 extends Day
 {
     public static string $title = 'Monkey Map';

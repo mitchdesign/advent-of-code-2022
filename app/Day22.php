@@ -2,36 +2,47 @@
 
 namespace App;
 
-use Illuminate\Support\Collection;
+use App\Models\Day22\Map2D;
+use App\Models\Day22\Position2D;
 
 class Day22 extends Day
 {
     public static string $title = 'Monkey Map';
-
-    private array $map;
-
-    private Collection $directions;
-
-    private int $row;
-    private int $col;
-    private int $dir;
-
-    private int $maxRow;
-    private int $maxCol;
-
-    private bool $cube = false;
 
     private const RIGHT = 0;
     private const DOWN = 1;
     private const LEFT = 2;
     private const UP = 3;
 
+    private array $dirVectors = [
+        // [ row, col ] deltas
+        self::RIGHT => [0, 1],
+        self::DOWN => [1, 0],
+        self::LEFT => [0, -1],
+        self::UP => [-1, 0],
+    ];
+
+    private array $map;
+
+    private int $maxRow;
+    private int $maxCol;
+    private array $directions;
+    private array $jumpMap;
+
+    private int $row = 0;
+    private int $col = 0;
+    private int $dir = 0;
+
+    private bool $printMap = false;
+    private bool $printMoves = false;
+    private array $visualizeMap = [];
+
     public function __construct()
     {
         parent::__construct();
 
 //        $this->input =
-//            '        ...#
+//'        ...#
 //        .#..
 //        #...
 //        ....
@@ -46,9 +57,12 @@ class Day22 extends Day
 //
 //10R5L5R10L4R5L5';
 
-        [$map, $directions] = explode("\n\n", $this->input);
+        [$input, $directions] = explode("\n\n", $this->input);
 
-        $this->map = $this->parseMap($map);
+        $this->map = $this->parseMap($input);
+
+        $this->visualizeMap = $this->map;
+
         $this->directions = $this->parseDirections($directions);
 
         [$this->row, $this->col] = $this->getStart();
@@ -57,21 +71,28 @@ class Day22 extends Day
 
     public function puzzle1(): int
     {
-        foreach ($this->directions as $action) {
-            $action();
+        $this->jumpMap = $this->getJumpMapFlat();
+
+        foreach ($this->directions as $dir) {
+            $dir();
         }
 
-        return 1000 * ($this->row + 1) + 4 * ($this->col + 1) + $this->dir;
+        return $this->getScore();
     }
 
     public function puzzle2(): int
     {
-        $this->cube = true;
+        $this->jumpMap = $this->getJumpMap3D();
 
-        foreach ($this->directions as $action) {
-            $action();
+        foreach ($this->directions as $dir) {
+            $dir();
         }
 
+        return $this->getScore();
+    }
+
+    private function getScore(): int
+    {
         return 1000 * ($this->row + 1) + 4 * ($this->col + 1) + $this->dir;
     }
 
@@ -88,13 +109,14 @@ class Day22 extends Day
             ->toArray();
     }
 
-    private function parseDirections(string $directions): Collection
+    private function parseDirections(string $directions): array
     {
         return str($directions)
             ->replace(['L', 'R'], [' L ', ' R '])
             ->trim()
             ->explode(' ')
-            ->map(fn ($item) => is_numeric($item) ? fn () => $this->move($item) : fn () => $this->turn($item));
+            ->map(fn ($item) => is_numeric($item) ? fn () => $this->move($item) : fn () => $this->turn($item))
+            ->toArray();
     }
 
     private function getStart(): array
@@ -124,33 +146,27 @@ class Day22 extends Day
         $step = 0;
 
         while (++$step <= $steps && $this->step()) {
+            $this->visualizeMap[$this->row][$this->col] = [
+                self::RIGHT => '>',
+                self::DOWN => 'V',
+                self::LEFT => '<',
+                self::UP => '^',
+            ][$this->dir];
             // this was a step
         }
-
-//        dump("{$this->row}, {$this->col}, {$this->dir}");
+        if ($this->printMoves) {
+            $this->visualize();
+        }
     }
 
     // take a step in $dir direction. return true if ok, or false if the step was blocked due to an obstacle.
     private function step(): bool
     {
-        $nextRow = $this->row;
-        $nextCol = $this->col;
-        $nextDir = $this->dir;
-
-        $delta = match ($this->dir) {
-            self::RIGHT => [0, 1],
-            self::LEFT => [0, -1],
-            self::UP => [-1, 0],
-            self::DOWN => [1, 0],
-        };
-
-        $faceBefore = $this->getFace($nextRow, $nextCol);
-
-        $nextRow += $delta[0];
-        $nextCol += $delta[1];
-
-        if ($faceBefore != $this->getFace($nextRow, $nextCol)) {
-            [$nextRow, $nextCol, $nextDir] = $this->getRowColAfterFaceTransition($faceBefore, $this->dir, $nextRow, $nextCol);
+        if (! ([$nextRow, $nextCol, $nextDir] = $this->getJump())) {
+            $delta = $this->dirVectors[$this->dir];
+            $nextRow = $this->row + $delta[0];
+            $nextCol = $this->col + $delta[1];
+            $nextDir = $this->dir;
         }
 
         if ($this->map[$nextRow][$nextCol] === '#') {
@@ -164,73 +180,162 @@ class Day22 extends Day
         return true;
     }
 
-    private function getFace(int $row, int $col): string
+    protected function getJump(): ?array
     {
-        $row = (int) floor ($row / 50);
-        $col = (int) floor ($col / 50);
+        return $this->jumpMap[$this->row][$this->col][$this->dir] ?? null;
+    }
 
-//        +---+---+---+
-//        |   | A | B |
-//        +---+---+---+
-//        |   | C |   |
-//        +---+---+---+
-//        | D | E |   |
-//        +___+___+___+
-//        | F |   |   |
-//        +---+---+---+
+    protected function getJumpMapFlat(): array
+    {
+        $transposedMap = array_map(null, ...$this->map);
 
-        return match (10 * $row + $col) {
-            1 => 'A',
-            2 => 'B',
-            11 => 'C',
-            20 => 'D',
-            21 => 'E',
-            30 => 'F',
-            default => '',
+        $jumpMap = [];
+
+        for ($row = 0; $row <= $this->maxRow; $row++) {
+            $left = collect($this->map[$row])->takeWhile(fn ($val) => is_null($val))->count();
+            $right = $this->maxCol - collect($this->map[$row])->reverse()->takeWhile(fn ($val) => is_null($val))->count();
+            $jumpMap[$row][$left][(string) self::LEFT] = [$row, $right, self::LEFT];
+            $jumpMap[$row][$right][(string) self::RIGHT] = [$row, $left, self::RIGHT];
+        }
+
+        for ($col = 0; $col <= $this->maxCol; $col++) {
+            $top = collect($transposedMap[$col])->takeWhile(fn ($val) => is_null($val))->count();
+            $bottom = $this->maxRow - collect($transposedMap[$col])->reverse()->takeWhile(fn ($val) => is_null($val))->count();
+            $jumpMap[$top][$col][(string) self::UP] = [$bottom, $col, self::UP];
+            $jumpMap[$bottom][$col][(string) self::DOWN] = [$top, $col, self::DOWN];
+        }
+
+        return $jumpMap;
+    }
+
+    protected function getJumpMap3D(): array
+    {
+        // Find the inner corners of the folding pattern.
+        // Those are the start for tracing which edges touch.
+        // We follow each one until the two edges we follow,
+        // both turn at the same time which means they are no longer touching.
+
+        $starts = [];
+
+        for ($row = 0; $row <= $this->maxRow - 1; $row++) {
+            for ($col = 0; $col <= $this->maxCol - 1; $col++) {
+                if (collect([
+                    $this->map[$row][$col],
+                    $this->map[$row][$col + 1],
+                    $this->map[$row + 1][$col],
+                    $this->map[$row + 1][$col + 1]
+                ])->filter(fn ($val) => is_null($val))->count() === 1) {
+                    $starts[] = [$row + 0.5, $col + 0.5];
+                }
+            }
+        }
+
+        $jumpMap = [];
+
+        $x = 64;
+
+        foreach ($starts as $start) {
+            $visited = [$start];
+            $prevDir1 = $prevDir2 = null;
+
+            [$edge1, $edge2] = $this->findNextNodes($start, $visited);
+
+            while ($edge1 && $edge2 && (is_null($prevDir1) || $prevDir1 == $edge1['jump'][2] || $prevDir2 == $edge2['jump'][2])) {
+                if ($this->printMap) {
+                    $x++;
+                    if ($x > 65 + 63) {
+                        $x = 65;
+                    }
+                    $this->visualizeMap[$edge1['jump'][0]][$edge1['jump'][1]] =
+                    $this->visualizeMap[$edge2['jump'][0]][$edge2['jump'][1]] = chr($x);
+                }
+                $j1 = $edge1['jump'];
+                $j2 = $edge2['jump'];
+
+                $prevDir1 = $j1[2];
+                $prevDir2 = $j2[2];
+
+                $jumpMap[$j1[0]][$j1[1]][(string)$j1[2]] = [$j2[0], $j2[1], self::reverseDir($j2[2])];
+                $jumpMap[$j2[0]][$j2[1]][(string)$j2[2]] = [$j1[0], $j1[1], self::reverseDir($j1[2])];
+
+                [$edge1] = $this->findNextNodes($edge1['node'], $visited);
+                [$edge2] = $this->findNextNodes($edge2['node'], $visited);
+
+                if ($this->printMap) {
+                    $this->visualize();
+                }
+            }
+        }
+
+        if ($this->printMap) {
+            $this->visualize();
+        }
+
+        return $jumpMap;
+    }
+
+    protected function findNextNodes(array &$node, array &$visited): array
+    {
+        // Going from a known node, find adjacent nodes that have not yet been stored
+        $nodes = [];
+
+        foreach ($this->dirVectors as $vector) {
+            $adjacentNode = [
+                $node[0] + $vector[0],
+                $node[1] + $vector[1],
+            ];
+
+            if (in_array($adjacentNode, $visited)) {
+                continue;
+            }
+
+            if ($vector[0] === 0) { // row delta = 0. this is left or right
+                $col = ($node[1] + ($vector[1] / 2));
+                $fields = [
+                    [$node[0] - 0.5, $col],
+                    [$node[0] + 0.5, $col],
+                ];
+                $dir = is_null($this->map[$fields[0][0]][$fields[0][1]] ?? null)
+                    ? self::UP
+                    : self::DOWN;
+            } else { // col delta = 0. this is up or down.
+                $row = ($node[0] + ($vector[0] / 2));
+                $fields = [
+                    [$row, $node[1] - 0.5],
+                    [$row, $node[1] + 0.5],
+                ];
+                $dir = is_null($this->map[$fields[0][0]][$fields[0][1]] ?? null)
+                    ? self::LEFT
+                    : self::RIGHT;
+            }
+
+            $filtered = collect($fields)->filter(fn($coords) => $this->map[$coords[0]][$coords[1]] ?? null);
+
+            if ($filtered->count() === 1) { // 1 left. so we are on an edge of null and not null fields
+                $field = $filtered->first();
+                $visited[] = $adjacentNode;
+                $nodes[] = [
+                    'node' => $adjacentNode,
+                    'jump' => [$field[0], $field[1], $dir],
+                ];
+            }
+        }
+
+        return $nodes ?: [null];
+    }
+
+    protected function reverseDir(int $dir): int
+    {
+        return match ($dir) {
+            self::UP => self::DOWN,
+            self::DOWN => self::UP,
+            self::LEFT => self::RIGHT,
+            self::RIGHT => self::LEFT,
         };
     }
 
-    private function getRowColAfterFaceTransition(string $faceBefore, int $dir, int $row, int $col): array
+    protected function visualize(): void
     {
-        if (! $this->cube) {
-            switch ($faceBefore . $dir) {
-                case 'A' . self::LEFT:
-                case 'D' . self::LEFT:
-                    $col += 100;
-                    break;
-                case 'B' . self::RIGHT:
-                case 'E' . self::RIGHT:
-                    $col -= 100;
-                    break;
-                case 'C' . self::LEFT:
-                case 'F' . self::LEFT:
-                    $col += 50;
-                    break;
-                case 'C' . self::RIGHT:
-                case 'F' . self::RIGHT:
-                    $col -= 50;
-                    break;
-                case 'A' . self::UP:
-                    $row += 150;
-                    break;
-                case 'B' . self::UP:
-                    $row += 50;
-                    break;
-                case 'D' . self::UP:
-                    $row += 100;
-                    break;
-                case 'E' . self::DOWN:
-                    $row -= 150;
-                    break;
-                case 'B' . self::DOWN:
-                    $row -= 50;
-                    break;
-                case 'F' . self::DOWN:
-                    $row -= 100;
-                    break;
-            }
-
-            return [$row, $col, $dir];
-        }
+        echo( '<pre>' . join("\n", array_map(fn ($r) => join('', array_map(fn ($s) => $s ?? ' ', $r)), $this->visualizeMap)) . '</pre><br><br>');
     }
 }

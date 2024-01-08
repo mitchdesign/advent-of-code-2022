@@ -43,25 +43,6 @@ class Day24 extends Day
         $lines = str(trim($this->input))
             ->explode("\n");
 
-        self::$blizzards = $lines->map(fn ($line, $lineIndex) => str($line)->split(1)->map(fn  ($char, $charIndex) =>
-            match ($char) {
-                '<' => new Blizzard(new Coordinate($charIndex, $lineIndex), -1, 0),
-                '>' => new Blizzard(new Coordinate($charIndex, $lineIndex), 1, 0),
-                '^' => new Blizzard(new Coordinate($charIndex, $lineIndex), 0, -1),
-                'v' => new Blizzard(new Coordinate($charIndex, $lineIndex), 0, 1),
-                default => null,
-            }
-        ))->flatten()->filter()->toArray();
-
-        self::$start = new Coordinate(
-            str($lines->first())->split(1)->takeUntil(fn ($c) => $c === '.')->count(),
-            0
-        );
-        self::$goal = new Coordinate(
-            str($lines->last())->split(1)->takeUntil(fn ($c) => $c === '.')->count(),
-            $lines->count() - 1
-        );
-
         self::$minX = 1;
         self::$maxX = strlen($lines->first()) - 2;
         self::$minY = 1;
@@ -78,6 +59,25 @@ class Day24 extends Day
             $i++;
         }
         self::$blizzardOptionSize = $smallest * $i;
+
+        self::$blizzards = $lines->map(fn ($line, $lineIndex) => str($line)->split(1)->map(fn  ($char, $charIndex) =>
+            match ($char) {
+                '<' => new Blizzard(new Coordinate($charIndex, $lineIndex), self::$deltaX - 1, 0),
+                '>' => new Blizzard(new Coordinate($charIndex, $lineIndex), 1, 0),
+                '^' => new Blizzard(new Coordinate($charIndex, $lineIndex), 0, self::$deltaY - 1),
+                'v' => new Blizzard(new Coordinate($charIndex, $lineIndex), 0, 1),
+                default => null,
+            }
+        ))->flatten()->filter()->toArray();
+
+        self::$start = new Coordinate(
+            str($lines->first())->split(1)->takeUntil(fn ($c) => $c === '.')->count(),
+            0
+        );
+        self::$goal = new Coordinate(
+            str($lines->last())->split(1)->takeUntil(fn ($c) => $c === '.')->count(),
+            $lines->count() - 1
+        );
 
         $this->queue = new \SplPriorityQueue();
         $this->queue->insert(new State(self::$start, 0), self::$start->getDistanceToGoal());

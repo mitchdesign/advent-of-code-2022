@@ -51,14 +51,14 @@ class Coordinate
         return "{$this->x}:{$this->y}";
     }
 
-    public function getDistanceToGoal(): int
+    public function getDistanceTo(self $to): int
     {
-        return abs(Day24::$goal->x - $this->x) + abs(Day24::$goal->y - $this->y);
+        return abs($to->x - $this->x) + abs($to->y - $this->y);
     }
 
-    public function isGoal(): bool
+    public function equals(self $otherCoordinate): bool
     {
-        return Day24::$goal->toString() === $this->toString();
+        return $otherCoordinate->x === $this->x && $otherCoordinate->y === $this->y;
     }
 
     private function is(int $x, int $y)

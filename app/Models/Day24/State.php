@@ -13,7 +13,7 @@ class State
     {
     }
 
-    public function getPossibleNextStates(): array
+    public function getPossibleNextStates(array $visitedStates): array
     {
         $nextTime = $this->timePassed + 1;
 
@@ -23,7 +23,7 @@ class State
             self::make($this->coordinate->left(), $nextTime),
             self::make($this->coordinate->right(), $nextTime),
             self::make($this->coordinate, $nextTime),
-        ], fn ($state) => $state && ! array_key_exists($state->getStateId(), Day24::$visitedStates));
+        ], fn ($state) => $state && ! array_key_exists($state->getStateId(), $visitedStates));
     }
 
     public static function make(?Coordinate $coordinate, int $timePassed): ?self
@@ -39,9 +39,9 @@ class State
         return new self($coordinate, $timePassed);
     }
 
-    public function getQueueHeuristic(): int
+    public function getQueueHeuristic(Coordinate $to): int
     {
-        return -1 * ($this->timePassed + $this->coordinate->getDistanceToGoal());
+        return -1 * ($this->timePassed + $this->coordinate->getDistanceTo($to));
     }
 
     public function getStateId(): string

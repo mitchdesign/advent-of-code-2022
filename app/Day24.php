@@ -10,10 +10,6 @@ class Day24 extends Day
 {
     public static string $title = 'Blizzard Basin';
 
-    protected \SplPriorityQueue $queue;
-
-    public static array $visitedStates = [];
-
     public static Coordinate $start;
     public static Coordinate $goal;
 
@@ -78,33 +74,45 @@ class Day24 extends Day
             str($lines->last())->split(1)->takeUntil(fn ($c) => $c === '.')->count(),
             $lines->count() - 1
         );
-
-        $this->queue = new \SplPriorityQueue();
-        $this->queue->insert(new State(self::$start, 0), self::$start->getDistanceToGoal());
     }
 
     public function result1(): int
     {
+        return $this->findShortestRoute(self::$start, self::$goal, 0);
+    }
+
+    public function result2(): int
+    {
+        $run1 = $this->findShortestRoute(self::$start, self::$goal, 0);
+        $run2 = $this->findShortestRoute(self::$goal, self::$start, $run1);
+        $run3 = $this->findShortestRoute(self::$start, self::$goal, $run2);
+
+        return $run3;
+    }
+
+    protected function findShortestRoute(Coordinate $from, Coordinate $to, int $startTime): int
+    {
+        $visitedStates = [];
+
+        $state = new State($from, $startTime);
+
+        $queue = new \SplPriorityQueue();
+        $queue->insert($state, $state->getQueueHeuristic($to));
+
         /** @var State $state */
-        while ($state = $this->queue->extract()) {
-            if ($state->coordinate->isGoal()) {
+        while ($state = $queue->extract()) {
+            if ($state->coordinate->equals($to)) {
                 return $state->timePassed;
             }
 
             /** @var State $nextState */
-            foreach ($state->getPossibleNextStates() as $nextState) {
-                self::$visitedStates[$nextState->getStateId()] = true;
-                $this->queue->insert($nextState, $nextState->getQueueHeuristic());
+            foreach ($state->getPossibleNextStates($visitedStates) as $nextState) {
+                $visitedStates[$nextState->getStateId()] = true;
+                $queue->insert($nextState, $nextState->getQueueHeuristic($to));
             }
         }
 
         throw new \Exception('Found no solution');
-    }
-
-
-    public function result2(): int
-    {
-        return 1;
     }
 
     public static function isCoordinateOccupiedAtTime(Coordinate $coordinate, int $timePassed): bool
